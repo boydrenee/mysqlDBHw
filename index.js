@@ -52,7 +52,7 @@ function viewItemsInDb() {
       if (err) throw err;
       // Log all results of the SELECT statement
       console.log(res);
-      connection.end();
+      //connection.end();
     }); 
  };
  
@@ -83,13 +83,17 @@ function getUserInput() {
         let sql = 'SELECT ?? FROM ?? WHERE ?? = ?';
         let values = ['*', 'myInventoryTbl', 'itemkey', answers.item];
         keyValue = parseInt(answers.item);
+        let itemQty = answers.itemQuantity;
         console.log(keyValue);
         sql = mysql.format(sql, values);
         connection.query(sql, function(err, results) {
-            if (answers.itemQuantity <= results.itemkey.instockcnt) {
+            if(err)
+                throw err;
+            console.log("test", results, itemQty);
+            if (itemQty <= results[0].instockcnt) {
                 console.log('\nWise choice!\n');
                 // The following lines update the database
-                let userQuantity = results.instockcnt - answers.itemQuantity;
+                let userQuantity = results[0].instockcnt - itemQty;
                 let query = connection.query(
                     'UPDATE myInventoryTbl set ? where ?',
                     [
@@ -97,17 +101,19 @@ function getUserInput() {
                             instockcnt: userQuantity
                         },
                         {
-                            itemkey: result.itemkey
+                            itemkey: results[0].itemkey
                         }
                     ],
                     function(err, results) {
-                        console.log('${results.affectedRows} myInventoryTbl updated');
-                        promptAgain();
+                        if(err)
+                            throw err;
+                        console.log(`${results.affectedRows} myInventoryTbl updated`);
+                        getUserInput();
                     }
                 );
                 // report the total to the user
-                userTotal = parseFloat((result[1].price * answers.itemQuantity).tofixed(2));
-                console.log('Your total is $${userTotal}\n');
+                userTotal = parseFloat((results[0].price * itemQty).toFixed(2));
+                console.log('Your total is $' + userTotal + '\n');
             } else {
                 console.log('\nWe do not have that many in stock. \nYou will have to reduce your amount.\n');
                 getUserInput();
